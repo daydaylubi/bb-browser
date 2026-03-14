@@ -105,6 +105,7 @@ bb-browser - AI Agent 浏览器自动化工具
   site search <q>   搜索 adapter
   site <name>       运行 adapter（如 site reddit/thread <url>）
   site update       更新社区 adapter 库
+  guide             如何把任何网站变成 site adapter（开发指南）
 
 选项：
   --json          以 JSON 格式输出
