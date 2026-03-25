@@ -27,12 +27,17 @@ You should proactively use this skill whenever the user asks you to:
    If a command returns an `HTTP 401` or `Not logged in` error, you MUST stop and ask the user to log into that website manually in their browser. Do not attempt to guess credentials.
 3. **Parse Cleanly**
    All output is JSON by default. If you only need certain fields, use the built-in `--jq` flag to filter the output early and save context window constraints.
+4. **Finding Adapters (Crucial)**
+   NEVER pipe `site list` to `grep` (e.g., `site list | grep twitter`), as the output is tree-formatted and `grep` will falsely truncate the available commands. You MUST use the built-in search command: `bb-browser site search <query>`.
 
 ## Quick Start
 
 ```bash
 # First time setup / update library
 bb-browser site update
+
+# Find adapters for a specific platform (ALWAYS use this instead of grep)
+bb-browser site search twitter
 
 # List all available adapters
 bb-browser site list
