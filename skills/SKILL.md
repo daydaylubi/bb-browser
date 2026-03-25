@@ -36,6 +36,7 @@ Whenever you need to extract information from a specific website, strictly follo
 
 1. **Search for Adapters** (Do NOT dump the entire list)
    Directly use the search command to find if an adapter exists for your target platform.
+   *(Tip: If a search yields no results, try common alternative names or English aliases. e.g., "x" -> "twitter", "小红书" -> "xiaohongshu", "B站" -> "bilibili")*.
    ```bash
    bb-browser site search <keyword>
    ```
