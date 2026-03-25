@@ -1,5 +1,5 @@
 /**
- * site 命令 - 管理和运行社区/私有网站适配器
+ * site 命令 - 管理和运行社区/私有网站适配器 (纯 OpenClaw 模式)
  *
  * 用法：
  *   bb-browser site list                      列出所有可用 site adapter
@@ -13,10 +13,7 @@
  *   ~/.bb-browser/bb-sites/    社区 adapter（bb-browser site update 拉取）
  */
 
-import { generateId, type Request, type Response, type TabInfo } from "@bb-browser/shared";
-import { handleJqResponse, sendCommand } from "../client.js";
-import { getHistoryDomains } from "../history-sqlite.js";
-import { ensureDaemonRunning } from "../daemon-manager.js";
+import { handleJqResponse } from "../client.js";
 import { readFileSync, readdirSync, existsSync, mkdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { homedir } from "node:os";
@@ -34,15 +31,12 @@ function checkCliUpdate(): void {
     if (latest && current && latest !== current && latest.localeCompare(current, undefined, { numeric: true }) > 0) {
       console.log(`\n📦 bb-browser ${latest} available (current: ${current}). Run: npm install -g bb-browser`);
     }
-  } catch {}
+  } catch { }
 }
 
 export interface SiteOptions {
   json?: boolean;
-  tabId?: number;
-  days?: number;
   jq?: string;
-  openclaw?: boolean;
 }
 
 /** Adapter 参数定义 */
@@ -64,22 +58,6 @@ interface SiteMeta {
   source: "local" | "community";
 }
 
-interface HistoryDomain {
-  domain: string;
-  visits: number;
-}
-
-interface SiteRecommendation {
-  domain: string;
-  visits: number;
-  adapterCount: number;
-  adapters: Array<{
-    name: string;
-    description: string;
-    example: string;
-  }>;
-}
-
 function exitJsonError(error: string, extra: Record<string, unknown> = {}): never {
   console.log(JSON.stringify({ success: false, error, ...extra }, null, 2));
   process.exit(1);
@@ -96,12 +74,10 @@ function parseSiteMeta(filePath: string, source: "local" | "community"): SiteMet
     return null;
   }
 
-  // 从文件路径推断默认 name
   const sitesDir = source === "local" ? LOCAL_SITES_DIR : COMMUNITY_SITES_DIR;
   const relPath = relative(sitesDir, filePath);
   const defaultName = relPath.replace(/\.js$/, "").replace(/\\/g, "/");
 
-  // 解析 /* @meta { ... } */ 块
   const metaMatch = content.match(/\/\*\s*@meta\s*\n([\s\S]*?)\*\//);
   if (metaMatch) {
     try {
@@ -117,12 +93,9 @@ function parseSiteMeta(filePath: string, source: "local" | "community"): SiteMet
         filePath,
         source,
       };
-    } catch {
-      // JSON 解析失败，回退到 @tag 模式
-    }
+    } catch { }
   }
 
-  // 回退：解析 // @tag 格式（兼容旧格式）
   const meta: SiteMeta = {
     name: defaultName,
     description: "",
@@ -152,9 +125,6 @@ function parseSiteMeta(filePath: string, source: "local" | "community"): SiteMet
   return meta;
 }
 
-/**
- * 扫描目录下所有 .js 文件
- */
 function scanSites(dir: string, source: "local" | "community"): SiteMeta[] {
   if (!existsSync(dir)) return [];
   const sites: SiteMeta[] = [];
@@ -177,26 +147,6 @@ function scanSites(dir: string, source: "local" | "community"): SiteMeta[] {
   return sites;
 }
 
-/**
- * 根据 URL 检查是否有对应的 site adapter，返回提示文本
- */
-export function getSiteHintForDomain(url: string): string | null {
-  try {
-    const hostname = new URL(url).hostname;
-    const sites = getAllSites();
-    const matched = sites.filter(s => s.domain && (hostname === s.domain || hostname.endsWith("." + s.domain)));
-    if (matched.length === 0) return null;
-    const names = matched.map(s => s.name);
-    const example = matched[0].example || `bb-browser site ${names[0]}`;
-    return `该网站有 ${names.length} 个 site adapter 可直接获取数据，无需手动操作浏览器。试试: ${example}`;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * 获取所有 adapter（私有优先）
- */
 function getAllSites(): SiteMeta[] {
   const community = scanSites(COMMUNITY_SITES_DIR, "community");
   const local = scanSites(LOCAL_SITES_DIR, "local");
@@ -206,18 +156,6 @@ function getAllSites(): SiteMeta[] {
   for (const s of local) byName.set(s.name, s);
 
   return Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name));
-}
-
-/**
- * 精确匹配 tab 的 origin
- */
-function matchTabOrigin(tabUrl: string, domain: string): boolean {
-  try {
-    const tabOrigin = new URL(tabUrl).hostname;
-    return tabOrigin === domain || tabOrigin.endsWith("." + domain);
-  } catch {
-    return false;
-  }
 }
 
 // ── 子命令 ──────────────────────────────────────────────────────
@@ -307,8 +245,6 @@ function siteUpdate(options: SiteOptions = {}): void {
       execSync("git pull --ff-only", { cwd: COMMUNITY_SITES_DIR, stdio: "pipe" });
       if (!options.json) {
         console.log("更新完成。");
-        console.log("");
-        console.log("💡 运行 bb-browser site recommend 看看哪些和你的浏览习惯匹配");
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
@@ -328,8 +264,6 @@ function siteUpdate(options: SiteOptions = {}): void {
       execSync(`git clone ${COMMUNITY_REPO} ${COMMUNITY_SITES_DIR}`, { stdio: "pipe" });
       if (!options.json) {
         console.log("克隆完成。");
-        console.log("");
-        console.log("💡 运行 bb-browser site recommend 看看哪些和你的浏览习惯匹配");
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
@@ -358,7 +292,6 @@ function siteUpdate(options: SiteOptions = {}): void {
   console.log(`已安装 ${sites.length} 个社区 adapter。`);
   console.log(`⭐ Like bb-browser? → bb-browser star`);
 
-  // Check for CLI updates
   checkCliUpdate();
 }
 
@@ -415,88 +348,6 @@ function siteInfo(name: string, options: SiteOptions): void {
   console.log(`只读：${site.readOnly ? "是" : "否"}`);
 }
 
-async function siteRecommend(options: SiteOptions): Promise<void> {
-  const days = options.days ?? 30;
-  const historyDomains: HistoryDomain[] = getHistoryDomains(days);
-  const sites = getAllSites();
-  const sitesByDomain = new Map<string, SiteMeta[]>();
-
-  for (const site of sites) {
-    if (!site.domain) continue;
-    const domain = site.domain.toLowerCase();
-    const existing = sitesByDomain.get(domain) || [];
-    existing.push(site);
-    sitesByDomain.set(domain, existing);
-  }
-
-  const available: SiteRecommendation[] = [];
-  const notAvailable: HistoryDomain[] = [];
-
-  for (const item of historyDomains) {
-    const adapters = sitesByDomain.get(item.domain.toLowerCase());
-    if (adapters && adapters.length > 0) {
-      const sortedAdapters = [...adapters].sort((a, b) => a.name.localeCompare(b.name));
-      available.push({
-        domain: item.domain,
-        visits: item.visits,
-        adapterCount: sortedAdapters.length,
-        adapters: sortedAdapters.map((site) => ({
-          name: site.name,
-          description: site.description,
-          example: site.example || `bb-browser site ${site.name}`,
-        })),
-      });
-    } else if (item.visits >= 5 && item.domain && !item.domain.includes('localhost') && item.domain.includes('.')) {
-      notAvailable.push(item);
-    }
-  }
-
-  const jsonData = {
-    days,
-    available,
-    not_available: notAvailable,
-  };
-
-  if (options.jq) {
-    handleJqResponse({ id: generateId(), success: true, data: jsonData as any });
-  }
-
-  if (options.json) {
-    console.log(JSON.stringify(jsonData, null, 2));
-    return;
-  }
-
-  console.log(`基于你最近 ${days} 天的浏览记录：`);
-  console.log();
-
-  console.log("🎯 你常用这些网站，可以直接用：");
-  console.log();
-  if (available.length === 0) {
-    console.log("  （暂无匹配的 adapter）");
-  } else {
-    for (const item of available) {
-      console.log(`  ${item.domain.padEnd(20)} ${item.visits} 次访问    ${item.adapterCount} 个命令`);
-      console.log(`    试试: ${item.adapters[0]?.example || `bb-browser site ${item.adapters[0]?.name || ""}`}`);
-      console.log();
-    }
-  }
-
-  console.log("📋 你常用但还没有 adapter：");
-  console.log();
-  if (notAvailable.length === 0) {
-    console.log("  （暂无）");
-  } else {
-    for (const item of notAvailable) {
-      console.log(`  ${item.domain.padEnd(20)} ${item.visits} 次访问`);
-    }
-  }
-
-  console.log();
-  console.log('💡 跟你的 AI Agent 说 "把 notion.so CLI 化"，它就能自动完成。');
-  console.log();
-  console.log(`所有分析纯本地完成。用 --days 7 只看最近一周。`);
-}
-
 async function siteRun(
   name: string,
   args: string[],
@@ -530,7 +381,6 @@ async function siteRun(
   const argNames = Object.keys(site.args);
   const argMap: Record<string, string> = {};
 
-  // 过滤掉 --flag value 对，收集位置参数
   const positionalArgs: string[] = [];
   for (let i = 0; i < args.length; i++) {
     if (args[i].startsWith("--")) {
@@ -544,7 +394,6 @@ async function siteRun(
     }
   }
 
-  // 位置参数按 argNames 顺序填入（跳过已通过 --flag 提供的）
   let posIdx = 0;
   for (const argName of argNames) {
     if (!argMap[argName] && posIdx < positionalArgs.length) {
@@ -552,7 +401,6 @@ async function siteRun(
     }
   }
 
-  // 只检查 required 参数
   for (const [argName, argDef] of Object.entries(site.args)) {
     if (argDef.required && !argMap[argName]) {
       const usage = argNames.map(a => {
@@ -572,157 +420,46 @@ async function siteRun(
     }
   }
 
-  // 读取并解析 JS
   const jsContent = readFileSync(site.filePath, "utf-8");
-
-  // 移除 /* @meta ... */ 块，保留函数体
   const jsBody = jsContent.replace(/\/\*\s*@meta[\s\S]*?\*\//, "").trim();
-
-  // 构造执行脚本
   const argsJson = JSON.stringify(argMap);
-  const script = `(${jsBody})(${argsJson})`;
 
-  if (options.openclaw) {
-    const { ocGetTabs, ocFindTabByDomain, ocOpenTab, ocEvaluate } = await import("../openclaw-bridge.js");
+  const { ocGetTabs, ocFindTabByDomain, ocOpenTab, ocEvaluate } = await import("../openclaw-bridge.js");
 
-    let targetId: string;
+  let targetId: string;
 
-    if (site.domain) {
-      const tabs = ocGetTabs();
-      const existing = ocFindTabByDomain(tabs, site.domain);
-      if (existing) {
-        targetId = existing.targetId;
-      } else {
-        targetId = ocOpenTab(`https://${site.domain}`);
-        await new Promise((resolve) => setTimeout(resolve, 3000));
-      }
+  if (site.domain) {
+    const tabs = ocGetTabs();
+    const existing = ocFindTabByDomain(tabs, site.domain);
+    if (existing) {
+      targetId = existing.targetId;
     } else {
-      const tabs = ocGetTabs();
-      if (tabs.length === 0) {
-        throw new Error("No tabs open in OpenClaw browser");
-      }
-      targetId = tabs[0].targetId;
-    }
-
-    const wrappedFn = `async () => { const __fn = ${jsBody}; return await __fn(${argsJson}); }`;
-    const parsed = ocEvaluate(targetId, wrappedFn);
-
-    if (typeof parsed === "object" && parsed !== null && "error" in parsed) {
-      const errObj = parsed as { error: string; hint?: string };
-      const checkText = `${errObj.error} ${errObj.hint || ""}`;
-      const isAuthError = /401|403|unauthorized|forbidden|not.?logged|login.?required|sign.?in|auth/i.test(checkText);
-      const loginHint = isAuthError && site.domain
-        ? `Please log in to https://${site.domain} in your OpenClaw browser first, then retry.`
-        : undefined;
-      const hint = loginHint || errObj.hint;
-      const reportHint = `If this is an adapter bug, report via: gh issue create --repo epiral/bb-sites --title "[${name}] <description>" OR: bb-browser site github/issue-create epiral/bb-sites --title "[${name}] <description>"`;
-
-      if (options.json) {
-        console.log(JSON.stringify({ id: "openclaw", success: false, error: errObj.error, hint, reportHint }));
-      } else {
-        console.error(`[error] site ${name}: ${errObj.error}`);
-        if (hint) console.error(`  Hint: ${hint}`);
-        console.error(`  Report: gh issue create --repo epiral/bb-sites --title "[${name}] ..."`);
-        console.error(`     or: bb-browser site github/issue-create epiral/bb-sites --title "[${name}] ..."`);
-      }
-      process.exit(1);
-    }
-
-    if (options.jq) {
-      const { applyJq } = await import("../jq.js");
-      const expr = options.jq.replace(/^\.data\./, '.');
-      const results = applyJq(parsed, expr);
-      for (const r of results) {
-        console.log(typeof r === "string" ? r : JSON.stringify(r));
-      }
-    } else if (options.json) {
-      console.log(JSON.stringify({ id: "openclaw", success: true, data: parsed }));
-    } else {
-      console.log(JSON.stringify(parsed, null, 2));
-    }
-    return;
-  }
-
-  await ensureDaemonRunning();
-
-  // 确定目标 tab
-  let targetTabId: number | undefined = options.tabId;
-
-  // 如果用户没指定 --tab，自动查找匹配域名的 tab
-  if (!targetTabId && site.domain) {
-    const listReq: Request = { id: generateId(), action: "tab_list" };
-    const listResp: Response = await sendCommand(listReq);
-
-    if (listResp.success && listResp.data?.tabs) {
-      const matchingTab = listResp.data.tabs.find((tab: TabInfo) =>
-        matchTabOrigin(tab.url, site.domain)
-      );
-      if (matchingTab) {
-        targetTabId = matchingTab.tabId;
-      }
-    }
-
-    if (!targetTabId) {
-      const newResp = await sendCommand({
-        id: generateId(),
-        action: "tab_new",
-        url: `https://${site.domain}`,
-      });
-      targetTabId = newResp.data?.tabId;
+      targetId = ocOpenTab(`https://${site.domain}`);
       await new Promise((resolve) => setTimeout(resolve, 3000));
     }
-  }
-
-  // 执行
-  const evalReq: Request = { id: generateId(), action: "eval", script, tabId: targetTabId };
-  const evalResp: Response = await sendCommand(evalReq);
-
-  if (!evalResp.success) {
-    const hint = site.domain
-      ? `Open https://${site.domain} in your browser, make sure you are logged in, then retry.`
-      : undefined;
-    if (options.json) {
-      console.log(JSON.stringify({ id: evalReq.id, success: false, error: evalResp.error || "eval failed", hint }));
-    } else {
-      console.error(`[error] site ${name}: ${evalResp.error || "eval failed"}`);
-      if (hint) console.error(`  Hint: ${hint}`);
+  } else {
+    const tabs = ocGetTabs();
+    if (tabs.length === 0) {
+      throw new Error("No tabs open in OpenClaw browser");
     }
-    process.exit(1);
+    targetId = tabs[0].targetId;
   }
 
-  const result = evalResp.data?.result;
-  if (result === undefined || result === null) {
-    if (options.json) {
-      console.log(JSON.stringify({ id: evalReq.id, success: true, data: null }));
-    } else {
-      console.log("(no output)");
-    }
-    return;
-  }
+  const wrappedFn = `async () => { const __fn = ${jsBody}; return await __fn(${argsJson}); }`;
+  const parsed = ocEvaluate(targetId, wrappedFn);
 
-  // 解析输出
-  let parsed: unknown;
-  try {
-    parsed = typeof result === "string" ? JSON.parse(result) : result;
-  } catch {
-    parsed = result;
-  }
-
-  // 检查 adapter 返回的 error
   if (typeof parsed === "object" && parsed !== null && "error" in parsed) {
     const errObj = parsed as { error: string; hint?: string };
-
-    // 检测是否为登录问题（检查 error 和 hint 文本）
     const checkText = `${errObj.error} ${errObj.hint || ""}`;
     const isAuthError = /401|403|unauthorized|forbidden|not.?logged|login.?required|sign.?in|auth/i.test(checkText);
     const loginHint = isAuthError && site.domain
-      ? `Please log in to https://${site.domain} in your browser first, then retry.`
+      ? `Please log in to https://${site.domain} in your OpenClaw browser first, then retry.`
       : undefined;
     const hint = loginHint || errObj.hint;
     const reportHint = `If this is an adapter bug, report via: gh issue create --repo epiral/bb-sites --title "[${name}] <description>" OR: bb-browser site github/issue-create epiral/bb-sites --title "[${name}] <description>"`;
 
     if (options.json) {
-      console.log(JSON.stringify({ id: evalReq.id, success: false, error: errObj.error, hint, reportHint }));
+      console.log(JSON.stringify({ id: "openclaw", success: false, error: errObj.error, hint, reportHint }));
     } else {
       console.error(`[error] site ${name}: ${errObj.error}`);
       if (hint) console.error(`  Hint: ${hint}`);
@@ -734,14 +471,13 @@ async function siteRun(
 
   if (options.jq) {
     const { applyJq } = await import("../jq.js");
-    // Tolerate ".data." prefix — Agent may copy from --json envelope structure
     const expr = options.jq.replace(/^\.data\./, '.');
     const results = applyJq(parsed, expr);
     for (const r of results) {
       console.log(typeof r === "string" ? r : JSON.stringify(r));
     }
   } else if (options.json) {
-    console.log(JSON.stringify({ id: evalReq.id, success: true, data: parsed }));
+    console.log(JSON.stringify({ id: "openclaw", success: true, data: parsed }));
   } else {
     console.log(JSON.stringify(parsed, null, 2));
   }
@@ -761,7 +497,6 @@ export async function siteCommand(
 用法:
   bb-browser site list                      列出所有可用 adapter
   bb-browser site info <name>               查看 adapter 元信息
-  bb-browser site recommend                 基于历史记录推荐 adapter
   bb-browser site search <query>            搜索 adapter
   bb-browser site <name> [args...]          运行 adapter（简写）
   bb-browser site run <name> [args...]      运行 adapter
@@ -785,7 +520,7 @@ export async function siteCommand(
   }
 
   switch (subCommand) {
-    case "list":   siteList(options); break;
+    case "list": siteList(options); break;
     case "search":
       if (!args[1]) {
         console.error("[error] site search: <query> is required.");
@@ -802,10 +537,7 @@ export async function siteCommand(
       }
       siteInfo(args[1], options);
       break;
-    case "recommend":
-      await siteRecommend(options);
-      break;
-    case "update":  siteUpdate(options); break;
+    case "update": siteUpdate(options); break;
     case "run":
       if (!args[1]) {
         console.error("[error] site run: <name> is required.");
@@ -820,7 +552,7 @@ export async function siteCommand(
         await siteRun(subCommand, args.slice(1), options);
       } else {
         console.error(`[error] site: unknown subcommand "${subCommand}".`);
-        console.error("  Available: list, info, recommend, search, run, update");
+        console.error("  Available: list, info, search, run, update");
         console.error("  Try: bb-browser site --help");
         process.exit(1);
       }
@@ -841,5 +573,5 @@ function silentUpdate(): void {
       detached: true,
     });
     child.unref();
-  }).catch(() => {});
+  }).catch(() => { });
 }

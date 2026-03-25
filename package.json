@@ -4,24 +4,21 @@
   "description": "Your browser is the API. CLI + MCP server for AI agents to control Chrome with your login state.",
   "type": "module",
   "bin": {
-    "bb-browser": "./dist/cli.js",
-    "bb-browser-mcp": "./dist/mcp.js"
+    "bb-browser": "./dist/cli.js"
   },
   "main": "./dist/cli.js",
   "files": [
     "dist",
-    "extension",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
     "build": "turbo run build && pnpm build:release",
-    "build:release": "tsup && pnpm build:extension",
-    "build:extension": "rm -rf extension && cp -r packages/extension/dist extension",
+    "build:release": "tsup",
     "dev": "turbo run dev",
     "test": "turbo run test",
     "lint": "turbo run lint",
-    "clean": "turbo run clean && rm -rf node_modules dist extension",
+    "clean": "turbo run clean && rm -rf node_modules dist",
     "prepublishOnly": "pnpm build:release"
   },
   "keywords": [
@@ -30,12 +27,7 @@
     "ai",
     "agent",
     "chrome",
-    "extension",
-    "cli",
-    "puppeteer",
-    "playwright",
-    "cdp",
-    "mcp"
+    "cli"
   ],
   "author": "",
   "license": "MIT",
@@ -52,10 +44,6 @@
   },
   "packageManager": "pnpm@9.15.0",
   "dependencies": {
-    "@bufbuild/protobuf": "^2.11.0",
-    "@connectrpc/connect": "^2.1.1",
-    "@connectrpc/connect-node": "^2.1.1",
-    "@modelcontextprotocol/sdk": "^1.12.1",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "ws": "^8.18.0"
