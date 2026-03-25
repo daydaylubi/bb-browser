@@ -30,21 +30,27 @@ You should proactively use this skill whenever the user asks you to:
 4. **Finding Adapters (Crucial)**
    NEVER pipe `site list` to `grep` (e.g., `site list | grep twitter`), as the output is tree-formatted and `grep` will falsely truncate the available commands. You MUST use the built-in search command: `bb-browser site search <query>`.
 
-## Quick Start
+## Standard Workflow for AI Agents
 
-```bash
-# First time setup / update library
-bb-browser site update
+Whenever you need to extract information from a specific website, strictly follow this execution sequence:
 
-# Find adapters for a specific platform (ALWAYS use this instead of grep)
-bb-browser site search twitter
+1. **Search for Adapters** (Do NOT dump the entire list)
+   Directly use the search command to find if an adapter exists for your target platform.
+   ```bash
+   bb-browser site search <keyword>
+   ```
+2. **Check Adapter Requirements**
+   Once you identify the adapter name (e.g., `reddit/thread`), you MUST read its argument requirements before execution to avoid missing parameters.
+   ```bash
+   bb-browser site info <adapter_name>
+   ```
+3. **Execute & Parse**
+   Run the adapter. Use `--jq` if you need to filter the JSON payload.
+   ```bash
+   bb-browser site <adapter_name> [args]
+   ```
 
-# List all available adapters
-bb-browser site list
-
-# Read argument requirements for a specific adapter (parameters, usage)
-bb-browser site info reddit/thread
-```
+*(Note: Run `bb-browser site update` if you suspect the local adapter library is missing expected newer scripts).*
 
 ## Data Extraction Examples
 
