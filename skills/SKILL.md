@@ -10,6 +10,15 @@ allowed-tools: Bash(bb-browser:*)
 
 **bb-browser** bridges structured data extraction commands directly into the user's native browsing session.
 
+## When to Use This Skill
+
+You should proactively use this skill whenever the user asks you to:
+- **Search for real-time information** across social media (Twitter, Reddit, Weibo, Xiaohongshu), news, or developer platforms (GitHub, HackerNews).
+- **Extract structured data** from a specific URL or platform (e.g., "Summarize this YouTube video", "Get the latest trending topics on Zhihu").
+- **Access authenticated content** (e.g., retrieving data from domains where the user is already logged in, since this tool executes inside their active browser session).
+
+*Do NOT try to use raw `curl`, `python requests`, or scrape HTML manually for supported platforms. Always check `bb-browser site list` or `bb-browser site search <query>` first to see if an adapter exists.*
+
 ## Core Directives for Data Extraction
 
 1. **General Usage**
