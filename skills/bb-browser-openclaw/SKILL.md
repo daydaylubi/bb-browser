@@ -1,142 +1,85 @@
 ---
 name: bb-browser-openclaw
-description: Turn any website into a CLI command. 36 platforms, 103 commands — Twitter, Reddit, GitHub, YouTube, Zhihu, Bilibili, Weibo, and more. Uses OpenClaw's browser directly, no extra extension needed.
+description: Turn the web into a CLI command. 36 platforms, 103 commands. Executes data extraction scripts directly within OpenClaw's native browser tabs, reusing the user's active login state. Provide clean and structured JSON output.
 requires:
-  bins: bb-browser
+  bins: bb-browser, openclaw
 allowed-tools: Bash(bb-browser:*)
 ---
 
-# bb-browser sites — The web as CLI
+# bb-browser sites — The web as CLI for OpenClaw
 
-36 platforms, 103 commands. One-liner structured data from any website using your login state.
+**bb-browser** is a dedicated adapter engine that bridges structured data extraction commands directly into the **OpenClaw native browser**.
 
-**All commands use `--openclaw` to run through OpenClaw's browser. No Chrome extension or daemon needed.**
+There is no daemon, no Chrome extension, and no WebDriver involved. When you run `bb-browser site xxx`, it automatically connects to `openclaw browser evaluate` to execute logic securely inside the user's ongoing browsing session.
+
+## Core Directives for AI Agents
+
+1. **NEVER use the `--openclaw` flag**
+   The tool is already hardwired for OpenClaw. Simply run: `bb-browser site <name> [args]`.
+2. **Handle Auth Gracefully**
+   If a command returns an `HTTP 401` or `Not logged in` error, you MUST stop and ask the user to log into that website manually inside their OpenClaw browser. Do not attempt to guess credentials.
+3. **Parse Cleanly**
+   All output is JSON by default. If you only need certain fields, use the built-in `--jq` flag to filter the output early and save context window.
 
 ## Quick Start
 
 ```bash
-# First time: pull community adapters
+# First time setup / update library
 bb-browser site update
 
-# See what's available
+# List all available adapters
 bb-browser site list
 
-# See which adapters match your browsing habits
-bb-browser site recommend
-
-# Run any adapter via OpenClaw's browser
-bb-browser site reddit/hot --openclaw
-bb-browser site hackernews/top 5 --openclaw
-bb-browser site v2ex/hot --openclaw
+# Read argument requirements for a specific adapter (parameters, usage)
+bb-browser site info reddit/thread
 ```
 
-## IMPORTANT: Always use --openclaw
-
-Every `bb-browser site` command MUST include `--openclaw` to use OpenClaw's browser:
+## Data Extraction Examples
 
 ```bash
-# Correct
-bb-browser site twitter/search "AI agent" --openclaw
-bb-browser site zhihu/hot 10 --openclaw --json
-bb-browser site xueqiu/hot-stock 5 --openclaw --jq '.items[] | {name, changePercent}'
-
-# Wrong (requires separate Chrome extension)
+# Search & Social Media
 bb-browser site twitter/search "AI agent"
-```
+bb-browser site reddit/thread <post-url>
+bb-browser site weibo/hot
+bb-browser site xiaohongshu/search "query"
 
-## Data Extraction (most common use)
+# Developer & Tech
+bb-browser site github/repo owner/repo
+bb-browser site github/issues owner/repo
+bb-browser site hackernews/top 10
+bb-browser site stackoverflow/search "async await"
+bb-browser site arxiv/search "transformer"
 
-```bash
-# Social media
-bb-browser site twitter/search "OpenClaw" --openclaw
-bb-browser site twitter/thread <tweet-url> --openclaw
-bb-browser site reddit/thread <post-url> --openclaw
-bb-browser site weibo/hot --openclaw
-bb-browser site xiaohongshu/search "query" --openclaw
-
-# Developer
-bb-browser site github/repo owner/repo --openclaw
-bb-browser site github/issues owner/repo --openclaw
-bb-browser site hackernews/top 10 --openclaw
-bb-browser site stackoverflow/search "async await" --openclaw
-bb-browser site arxiv/search "transformer" --openclaw
-
-# Finance
-bb-browser site xueqiu/stock SH600519 --openclaw
-bb-browser site xueqiu/hot-stock 5 --openclaw
-bb-browser site eastmoney/stock "茅台" --openclaw
-
-# News & Knowledge
-bb-browser site zhihu/hot --openclaw
-bb-browser site 36kr/newsflash --openclaw
-bb-browser site wikipedia/summary "Python" --openclaw
+# Finance & News
+bb-browser site xueqiu/stock SH600519
+bb-browser site eastmoney/stock "茅台"
+bb-browser site zhihu/hot
+bb-browser site 36kr/newsflash
 
 # Video
-bb-browser site youtube/transcript VIDEO_ID --openclaw
-bb-browser site bilibili/search "query" --openclaw
+bb-browser site youtube/transcript VIDEO_ID
+bb-browser site bilibili/search "query"
 ```
 
-## Filtering with --jq
+## Advanced Filtering with --jq
 
-Use `--jq` to extract specific fields (no need for `--json`, it's implied):
+Use `--jq` to extract specific fields efficiently mapping over arrays (implied JSON parsing).
 
 ```bash
-# Just stock names
-bb-browser site xueqiu/hot-stock 5 --openclaw --jq '.items[].name'
+# Just extract stock names
+bb-browser site xueqiu/hot-stock 5 --jq '.items[].name'
 
 # Specific fields as objects
-bb-browser site xueqiu/hot-stock 5 --openclaw --jq '.items[] | {name, changePercent, heat}'
+bb-browser site xueqiu/hot-stock 5 --jq '.items[] | {name, changePercent, heat}'
 
-# Filter results
-bb-browser site reddit/hot --openclaw --jq '.posts[] | {title, score}'
+# Filter Reddit posts
+bb-browser site reddit/hot --jq '.posts[] | {title, score}'
 ```
 
-## View adapter details
+## Missing a Website? 
 
+If the user needs data from a website that isn't supported yet, you (`the AI agent`) can build a new adapter!
 ```bash
-# Check what args an adapter takes
-bb-browser site info xueqiu/stock
-
-# Search adapters by keyword
-bb-browser site search reddit
-```
-
-## Login State
-
-Adapters run inside OpenClaw's browser tabs. If a site requires login:
-
-1. The adapter will return an error like `{"error": "HTTP 401", "hint": "Not logged in?"}`
-2. Log in to the site in OpenClaw's browser:
-   ```bash
-   openclaw browser open https://twitter.com
-   ```
-3. Complete login manually in the browser window
-4. Retry the command
-
-## Creating New Adapters
-
-Turn any website into a CLI command:
-
-```bash
-# Read the guide
 bb-browser guide
-
-# Or just tell me: "turn notion.so into a bb-browser adapter"
-# I'll reverse-engineer the API, write the adapter, test it, and submit a PR.
 ```
-
-## All 36 Platforms
-
-| Category | Platforms |
-|----------|-----------|
-| Search | Google, Baidu, Bing, DuckDuckGo, Sogou WeChat |
-| Social | Twitter/X, Reddit, Weibo, Xiaohongshu, Jike, LinkedIn, Hupu |
-| News | BBC, Reuters, 36kr, Toutiao, Eastmoney |
-| Dev | GitHub, StackOverflow, HackerNews, CSDN, cnblogs, V2EX, Dev.to, npm, PyPI, arXiv |
-| Video | YouTube, Bilibili |
-| Entertainment | Douban, IMDb, Genius, Qidian |
-| Finance | Xueqiu, Eastmoney, Yahoo Finance |
-| Jobs | BOSS Zhipin, LinkedIn |
-| Knowledge | Wikipedia, Zhihu, Open Library |
-| Shopping | SMZDM |
-| Tools | Youdao, GSMArena, Product Hunt, Ctrip |
+Read the guide to learn how to reverse engineer a site using fetch calls, write an adapter, and execute it locally from `~/.bb-browser/sites/`.
