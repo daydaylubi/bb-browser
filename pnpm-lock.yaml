@@ -41,10 +41,6 @@ importers:
         version: 8.57.1(eslint@9.39.4)(typescript@5.9.3)
 
   packages/cli:
-    dependencies:
-      '@bb-browser/shared':
-        specifier: workspace:*
-        version: link:../shared
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -57,21 +53,6 @@ importers:
         version: 4.21.0
       typescript:
         specifier: ^5.3.0
-        version: 5.9.3
-      ws:
-        specifier: ^8.19.0
-        version: 8.19.0
-
-  packages/shared:
-    devDependencies:
-      '@types/node':
-        specifier: ^22.0.0
-        version: 22.19.7
-      tsup:
-        specifier: ^8.3.0
-        version: 8.5.1(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)
-      typescript:
-        specifier: ^5.7.0
         version: 5.9.3
 
 packages:
@@ -432,9 +413,6 @@ packages:
 
   '@types/node@20.19.30':
     resolution: {integrity: sha512-WJtwWJu7UdlvzEAUm484QNg5eAoq5QR08KDNx7g45Usrs2NtOPiX8ugDqmKdXkyL03rBqU5dYNYVQetEpBHq2g==}
-
-  '@types/node@22.19.7':
-    resolution: {integrity: sha512-MciR4AKGHWl7xwxkBa6xUGxQJ4VBOmPTF7sL+iGzuahOFaO0jHCsuEfS80pan1ef4gWId1oWOweIhrDEYLuaOw==}
 
   '@typescript-eslint/eslint-plugin@8.57.1':
     resolution: {integrity: sha512-Gn3aqnvNl4NGc6x3/Bqk1AOn0thyTU9bqDRhiRnUWezgvr2OnhYCWCgC8zXXRVqBsIL1pSDt7T9nJUe0oM0kDQ==}
@@ -1318,10 +1296,6 @@ snapshots:
   '@types/json-schema@7.0.15': {}
 
   '@types/node@20.19.30':
-    dependencies:
-      undici-types: 6.21.0
-
-  '@types/node@22.19.7':
     dependencies:
       undici-types: 6.21.0
 
