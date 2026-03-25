@@ -17,7 +17,7 @@ export function buildOpenClawArgs(args: string[], timeout: number): string[] {
     throw new Error("OpenClaw browser command requires a subcommand");
   }
 
-  return ["openclaw", "browser", subcommand, "--timeout", String(timeout), ...rest];
+  return ["browser", subcommand, "--timeout", String(timeout), ...rest];
 }
 
 export function getOpenClawExecTimeout(timeout: number): number {
@@ -25,7 +25,7 @@ export function getOpenClawExecTimeout(timeout: number): number {
 }
 
 function runOpenClaw(args: string[], timeout: number): string {
-  return execFileSync("npx", buildOpenClawArgs(args, timeout), {
+  return execFileSync("openclaw", buildOpenClawArgs(args, timeout), {
     encoding: "utf-8",
     timeout: getOpenClawExecTimeout(timeout),
     stdio: ["pipe", "pipe", "pipe"],
