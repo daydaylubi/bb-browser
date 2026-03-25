@@ -1,25 +1,23 @@
 ---
-name: bb-browser-openclaw
-description: Turn the web into a CLI command. 36 platforms, 103 commands. Executes data extraction scripts directly within OpenClaw's native browser tabs, reusing the user's active login state. Provide clean and structured JSON output.
+name: bb-browser
+description: Turn the web into a CLI command. Executes data extraction scripts directly within the user's native browser tabs, reusing their active login state. Provides clean and structured JSON output.
 requires:
   bins: bb-browser, openclaw
 allowed-tools: Bash(bb-browser:*)
 ---
 
-# bb-browser sites — The web as CLI for OpenClaw
+# bb-browser sites — The web as CLI for AI Agents
 
-**bb-browser** is a dedicated adapter engine that bridges structured data extraction commands directly into the **OpenClaw native browser**.
+**bb-browser** bridges structured data extraction commands directly into the user's native browsing session.
 
-There is no daemon, no Chrome extension, and no WebDriver involved. When you run `bb-browser site xxx`, it automatically connects to `openclaw browser evaluate` to execute logic securely inside the user's ongoing browsing session.
+## Core Directives for Data Extraction
 
-## Core Directives for AI Agents
-
-1. **NEVER use the `--openclaw` flag**
-   The tool is already hardwired for OpenClaw. Simply run: `bb-browser site <name> [args]`.
+1. **General Usage**
+   Execute tasks by running: `bb-browser site <name> [args]`.
 2. **Handle Auth Gracefully**
-   If a command returns an `HTTP 401` or `Not logged in` error, you MUST stop and ask the user to log into that website manually inside their OpenClaw browser. Do not attempt to guess credentials.
+   If a command returns an `HTTP 401` or `Not logged in` error, you MUST stop and ask the user to log into that website manually in their browser. Do not attempt to guess credentials.
 3. **Parse Cleanly**
-   All output is JSON by default. If you only need certain fields, use the built-in `--jq` flag to filter the output early and save context window.
+   All output is JSON by default. If you only need certain fields, use the built-in `--jq` flag to filter the output early and save context window constraints.
 
 ## Quick Start
 
@@ -78,7 +76,7 @@ bb-browser site reddit/hot --jq '.posts[] | {title, score}'
 
 ## Missing a Website? 
 
-If the user needs data from a website that isn't supported yet, you (`the AI agent`) can build a new adapter!
+If you need data from a website that isn't supported yet, you can build a new adapter!
 ```bash
 bb-browser guide
 ```
